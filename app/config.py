@@ -1,23 +1,24 @@
-"""Единственное место чтения и проверки настроек приложения."""
+"""Чтение и сборка настроек приложения."""
 
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from urllib.parse import urlsplit
 
-from aiogram.utils.token import TokenValidationError, validate_token
 from dotenv import dotenv_values
 
-
-class ConfigError(ValueError):
-    """Ошибка настройки без секретных значений в сообщении."""
+from app import config_validation as validation
+from app.config_validation import ConfigError as ConfigError
 
 
 @dataclass(frozen=True)
 class Settings:
     bot_token: str = field(repr=False)
     postgres_password: str = field(repr=False)
+    llm_api_key: str = field(repr=False)
+    llm_base_url: str
+    llm_model: str
+
     telegram_proxy_url: str = field(default="", repr=False)
     postgres_host: str = "127.0.0.1"
     postgres_port: int = 5432
@@ -26,9 +27,17 @@ class Settings:
     log_level: str = "INFO"
     health_port: int = 8080
 
+    llm_timeout_seconds: float = 30.0
+    default_temperature: float = 0.7
+    history_max_messages: int = 200
+    history_max_chars: int = 12_000
+
     @classmethod
     def load(
-        cls, env_file: Path | str = ".env", *, environ: Mapping[str, str] | None = None
+        cls,
+        env_file: Path | str = ".env",
+        *,
+        environ: Mapping[str, str] | None = None,
     ) -> "Settings":
         values = {
             **dotenv_values(env_file, interpolate=False),
@@ -36,54 +45,46 @@ class Settings:
         }
 
         def value(key: str, default: str = "") -> str:
-            return values.get(key) or default
+            result = values.get(key)
+            return default if result is None else result
 
-        def port(key: str, default: str) -> int:
-            try:
-                result = int(value(key, default))
-                if not 1 <= result <= 65535:
-                    raise ValueError
-                return result
-            except ValueError:
-                raise ConfigError(f"{key}: нужен номер порта от 1 до 65535.") from None
-
-        token = value("BOT_TOKEN")
-        try:
-            validate_token(token)
-        except TokenValidationError:
-            raise ConfigError("BOT_TOKEN: укажите токен, полученный у BotFather.") from None
-        password = value("POSTGRES_PASSWORD")
-        if not password:
-            raise ConfigError("POSTGRES_PASSWORD: пароль базы данных не задан.")
-        proxy = value("TELEGRAM_PROXY_URL")
-        if proxy:
-            try:
-                parsed = urlsplit(proxy)
-                if (
-                    parsed.scheme not in {"http", "socks5"}
-                    or not parsed.hostname
-                    or not parsed.port
-                    or parsed.path not in {"", "/"}
-                    or parsed.query
-                    or parsed.fragment
-                ):
-                    raise ValueError
-            except ValueError:
-                raise ConfigError(
-                    "TELEGRAM_PROXY_URL: нужен http://host:port или socks5://host:port; "
-                    "при необходимости добавьте user:password@."
-                ) from None
-        level = value("LOG_LEVEL", "INFO").upper()
-        if level not in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}:
-            raise ConfigError("LOG_LEVEL: используйте DEBUG, INFO, WARNING, ERROR или CRITICAL.")
         return cls(
-            bot_token=token,
-            postgres_password=password,
-            telegram_proxy_url=proxy,
+            bot_token=validation.bot_token(value("BOT_TOKEN")),
+            postgres_password=validation.required(
+                "POSTGRES_PASSWORD", value("POSTGRES_PASSWORD")
+            ),
+            telegram_proxy_url=validation.telegram_proxy_url(
+                value("TELEGRAM_PROXY_URL")
+            ),
             postgres_host=value("POSTGRES_HOST", "127.0.0.1"),
-            postgres_port=port("POSTGRES_PORT", "5432"),
+            postgres_port=validation.port(
+                "POSTGRES_PORT", value("POSTGRES_PORT", "5432")
+            ),
             postgres_db=value("POSTGRES_DB", "bot"),
             postgres_user=value("POSTGRES_USER", "bot"),
-            log_level=level,
-            health_port=port("HEALTH_PORT", "8080"),
+            log_level=validation.log_level(value("LOG_LEVEL", "INFO")),
+            health_port=validation.port(
+                "HEALTH_PORT", value("HEALTH_PORT", "8080")
+            ),
+            llm_api_key=validation.required(
+                "LLM_API_KEY", value("LLM_API_KEY")
+            ),
+            llm_base_url=validation.required(
+                "LLM_BASE_URL", value("LLM_BASE_URL")
+            ),
+            llm_model=validation.required(
+                "LLM_MODEL", value("LLM_MODEL")
+            ),
+            llm_timeout_seconds=validation.positive_float(
+                "LLM_TIMEOUT_SECONDS", value("LLM_TIMEOUT_SECONDS", "30")
+            ),
+            default_temperature=validation.temperature(
+                "DEFAULT_TEMPERATURE", value("DEFAULT_TEMPERATURE", "0.3")
+            ),
+            history_max_messages=validation.positive_int(
+                "HISTORY_MAX_MESSAGES", value("HISTORY_MAX_MESSAGES", "20")
+            ),
+            history_max_chars=validation.positive_int(
+                "HISTORY_MAX_CHARS", value("HISTORY_MAX_CHARS", "12000")
+            ),
         )

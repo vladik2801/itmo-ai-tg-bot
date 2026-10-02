@@ -1,5 +1,5 @@
 import asyncpg
-
+from pathlib import Path
 from app.config import Settings
 
 
@@ -22,3 +22,10 @@ async def create_pool(settings: Settings) -> asyncpg.Pool:
         await pool.close()
         raise
     return pool
+
+async def initialize_bd(pool : asyncpg.Pool) -> None:
+    path = Path(__file__).with_name("init.sql")
+    sql = path.read_text(encoding="utf-8")
+    async with pool.acquire() as connection:
+        async with connection.transaction():
+            await connection.execute(sql)

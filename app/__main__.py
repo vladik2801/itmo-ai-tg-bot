@@ -5,10 +5,12 @@ import logging
 from aiogram import Dispatcher
 
 from app.config import ConfigError, Settings
-from app.db import create_pool
-from app.handlers.echo import router
+from app.db import create_pool, initialize_bd
+from app.handlers import router
 from app.health import HealthState, start_health_server
+from app.llm import LLMClient
 from app.logging_setup import configure_logging
+from app.services.assistant import AssistantService
 from app.telegram import create_bot
 
 logger = logging.getLogger("app")
@@ -18,9 +20,12 @@ async def run(settings: Settings) -> None:
     state = HealthState()
     bot = create_bot(settings)
     runner = None
+    llm = None
     try:
         state.pool = await create_pool(settings)
         logger.info("PostgreSQL подключён: SELECT 1 выполнен.")
+        await initialize_bd(state.pool)
+        logger.info("Схема бд готова")
         # Начальная проверка токена и маршрута через прокси ограничена по времени.
         async with asyncio.timeout(30):
             me = await bot.get_me()
@@ -30,6 +35,8 @@ async def run(settings: Settings) -> None:
                 "У бота установлен webhook. Удалите его перед запуском polling "
                 "или используйте отдельного учебного бота."
             )
+        llm = LLMClient(settings)
+        assistant = AssistantService(llm)
         logger.info("Telegram доступен. Бот @%s запускает polling.", me.username)
         dispatcher = Dispatcher()
         dispatcher.include_router(router)
@@ -38,6 +45,7 @@ async def run(settings: Settings) -> None:
             dispatcher.start_polling(
                 bot,
                 db=state.pool,
+                assistant = assistant,
                 allowed_updates=dispatcher.resolve_used_update_types(),
                 close_bot_session=False,
             )
@@ -61,7 +69,7 @@ async def run(settings: Settings) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Учебный текстовый эхо-бот")
+    parser = argparse.ArgumentParser(description="Учебный текстовый AI-ассистент")
     parser.add_argument("--env-file", default=".env")
     args = parser.parse_args()
     try:
