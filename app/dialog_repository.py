@@ -11,7 +11,7 @@ class DialogRepository:
         self,
         user_id: int,
         *,
-        mode: str = "default",
+        mode: str = "study",
         temperature: float = 0.3,
     ) -> None:
         if mode not in {"default", "study"}:
@@ -31,6 +31,24 @@ class DialogRepository:
             Decimal(str(temperature)),
         )
 
+    async def set_temperature(
+            self,
+            user_id: int,
+            temperature: float,
+    ) -> None:
+        if temperature not in {0.0, 0.3, 0.7, 1.0}:
+            raise ValueError("Недопустимая температура")
+
+        await self._pool.execute(
+            """
+            INSERT INTO user_settings (user_id, temperature)
+            VALUES ($1, $2)
+            ON CONFLICT (user_id)
+            DO UPDATE SET temperature = EXCLUDED.temperature
+            """,
+            user_id,
+            Decimal(str(temperature)),
+        )
     async def get_history(
             self,
             chat_id: int,
@@ -110,3 +128,56 @@ class DialogRepository:
             """,
             user_id,
         )
+
+    async def set_mode(
+            self,
+            user_id: int,
+            chat_id: int,
+            mode: str,
+            temperature: float,
+    ) -> None:
+        if mode not in {"default", "study"}:
+            raise ValueError("Неизвестный режим")
+
+        if temperature not in {0.0, 0.3, 0.7, 1.0}:
+            raise ValueError("Недопустимая температура")
+
+        async with self._pool.acquire() as connection:
+            async with connection.transaction():
+                await connection.execute(
+                    """
+                    INSERT INTO user_settings (user_id, mode, temperature)
+                    VALUES ($1, 'default', $2)
+                    ON CONFLICT (user_id) DO NOTHING
+                    """,
+                    user_id,
+                    Decimal(str(temperature)),
+                )
+
+                current_mode = await connection.fetchval(
+                    """
+                    SELECT mode
+                    FROM user_settings
+                    WHERE user_id = $1
+                    FOR UPDATE
+                    """,
+                    user_id,
+                )
+
+                if current_mode == mode:
+                    return
+
+                await connection.execute(
+                    """
+                    UPDATE user_settings
+                    SET mode = $2
+                    WHERE user_id = $1
+                    """,
+                    user_id,
+                    mode,
+                )
+
+                await connection.execute(
+                    "DELETE FROM messages WHERE chat_id = $1",
+                    chat_id,
+                )

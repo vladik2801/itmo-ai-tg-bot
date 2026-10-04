@@ -1,6 +1,17 @@
 from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
-from aiogram.types import Message
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
+from app.services.assistant import (
+    AssistantError,
+    AssistantService,
+    TEMPERATURE_OPTIONS,
+)
+
 
 router = Router(name="commands")
 router.message.filter(F.chat.type == "private")
@@ -13,8 +24,109 @@ async def start(message : Message) -> None:
     )
 
 @router.message(Command("study"))
-async def study(message : Message) -> None:
+async def study(
+    message: Message,
+    assistant: AssistantService,
+) -> None:
+    if message.from_user is None:
+        return
+
+    await assistant.set_mode(
+        user_id=message.from_user.id,
+        chat_id=message.chat.id,
+        mode="study",
+    )
+
     await message.answer(
-        "Включен режим программирования! Введи свой запрос",
-        parse_mode= None,
+        "Включен режим программирования! Введи свой запрос.",
+        parse_mode=None,
+    )
+
+@router.message(Command("reset"))
+async def reset(
+    message: Message,
+    assistant: AssistantService,
+) -> None:
+    await assistant.clear_history(message.chat.id)
+
+    await message.answer(
+        "История диалога очищена. Настройки сохранены.",
+        parse_mode=None,
+    )
+
+@router.message(Command("settings"))
+async def settings_command(
+    message: Message,
+    assistant: AssistantService,
+) -> None:
+    if message.from_user is None:
+        return
+
+    try:
+        settings = await assistant.get_settings(message.from_user.id)
+    except AssistantError as exc:
+        await message.answer(str(exc), parse_mode=None)
+        return
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=f"{temperature:.1f}",
+                    callback_data=f"temperature:{temperature:.1f}",
+                )
+                for temperature in TEMPERATURE_OPTIONS
+            ]
+        ]
+    )
+
+    await message.answer(
+        f"Текущая температура: {settings.temperature:.1f}\n"
+        "Выберите новое значение:",
+        reply_markup=keyboard,
+        parse_mode=None,
+    )
+
+
+@router.callback_query(F.data.startswith("temperature:"))
+async def temperature_callback(
+    callback: CallbackQuery,
+    assistant: AssistantService,
+) -> None:
+    message = callback.message
+
+    if (
+        not isinstance(message, Message)
+        or message.chat.type != "private"
+        or message.chat.id != callback.from_user.id
+    ):
+        await callback.answer("Настройки доступны в личном чате.")
+        return
+
+    choices = {
+        f"temperature:{temperature:.1f}": temperature
+        for temperature in TEMPERATURE_OPTIONS
+    }
+    temperature = choices.get(callback.data)
+
+    if temperature is None:
+        await callback.answer("Недопустимое значение.", show_alert=True)
+        return
+
+    await callback.answer()
+
+    try:
+        await assistant.set_temperature(
+            user_id=callback.from_user.id,
+            chat_id=message.chat.id,
+            temperature=temperature,
+        )
+    except AssistantError as exc:
+        await message.answer(str(exc), parse_mode=None)
+        return
+
+    await message.edit_text(
+        f"Температура изменена на {temperature:.1f}.",
+        reply_markup=None,
+        parse_mode=None,
     )

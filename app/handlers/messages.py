@@ -5,8 +5,9 @@ from aiogram.types import Message
 from aiogram.utils.chat_action import ChatActionSender
 
 from app.llm import LLMError
-from app.services.assistant import AssistantService, AssistantError
+from app.services.assistant import AssistantError, AssistantService
 from app.telegram_text import split_text
+
 router = Router(name="messages")
 router.message.filter(F.chat.type == "private")
 
@@ -16,6 +17,9 @@ async def answer(
     message: Message,
     assistant: AssistantService,
 ) -> None:
+    if message.from_user is None:
+        return
+
     text = message.text
 
     if text is None or not text.strip():
@@ -30,9 +34,13 @@ async def answer(
             bot=message.bot,
             chat_id=message.chat.id,
         ):
-            response = await assistant.answer(text.strip())
+            response = await assistant.answer(
+                user_id=message.from_user.id,
+                chat_id=message.chat.id,
+                text=text.strip(),
+            )
 
-    except LLMError as exc:
+    except (LLMError, AssistantError) as exc:
         await message.answer(
             str(exc),
             parse_mode=None,

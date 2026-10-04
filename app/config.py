@@ -28,9 +28,9 @@ class Settings:
     health_port: int = 8080
 
     llm_timeout_seconds: float = 30.0
-    default_temperature: float = 0.7
-    history_max_messages: int = 200
-    history_max_chars: int = 12_000
+    default_temperature: float = 0.3
+    history_max_messages: int = 20
+    context_max_chars: int = 12_000
 
     @classmethod
     def load(
@@ -84,7 +84,11 @@ class Settings:
             history_max_messages=validation.positive_int(
                 "HISTORY_MAX_MESSAGES", value("HISTORY_MAX_MESSAGES", "20")
             ),
-            history_max_chars=validation.positive_int(
-                "HISTORY_MAX_CHARS", value("HISTORY_MAX_CHARS", "12000")
+            context_max_chars=validation.positive_int(
+                "CONTEXT_MAX_CHARS",
+                value(
+                    "CONTEXT_MAX_CHARS",
+                    value("HISTORY_MAX_CHARS", "12000"),
+                ),
             ),
         )

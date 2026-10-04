@@ -1,4 +1,3 @@
-BEGIN;
 
 CREATE TABLE IF NOT EXISTS user_settings (
     user_id BIGINT PRIMARY KEY,
@@ -21,4 +20,3 @@ CREATE TABLE IF NOT EXISTS messages (
 CREATE INDEX IF NOT EXISTS messages_chat_id_id_idx
     ON messages (chat_id, id);
 
-COMMIT;

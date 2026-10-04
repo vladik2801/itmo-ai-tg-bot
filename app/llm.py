@@ -119,3 +119,5 @@ class LLMClient:
                 status,
                 monotonic() - started,
             )
+    async def close(self) -> None:
+        await self._session.close()

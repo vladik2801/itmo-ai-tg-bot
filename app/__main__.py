@@ -6,6 +6,7 @@ from aiogram import Dispatcher
 
 from app.config import ConfigError, Settings
 from app.db import create_pool, initialize_bd
+from app.dialog_repository import DialogRepository
 from app.handlers import router
 from app.health import HealthState, start_health_server
 from app.llm import LLMClient
@@ -36,7 +37,8 @@ async def run(settings: Settings) -> None:
                 "или используйте отдельного учебного бота."
             )
         llm = LLMClient(settings)
-        assistant = AssistantService(llm)
+        repository = DialogRepository(state.pool)
+        assistant = AssistantService(llm, repository, settings)
         logger.info("Telegram доступен. Бот @%s запускает polling.", me.username)
         dispatcher = Dispatcher()
         dispatcher.include_router(router)
@@ -48,6 +50,7 @@ async def run(settings: Settings) -> None:
                 assistant = assistant,
                 allowed_updates=dispatcher.resolve_used_update_types(),
                 close_bot_session=False,
+                handle_as_tasks=False,
             )
         )
         state.initialized = True
@@ -59,6 +62,8 @@ async def run(settings: Settings) -> None:
             await asyncio.gather(state.polling_task, return_exceptions=True)
         if runner:
             await runner.cleanup()
+        if llm is not None:
+            await llm.close()
         await bot.session.close()
         if state.pool:
             try:
