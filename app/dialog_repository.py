@@ -2,7 +2,7 @@ from decimal import Decimal
 
 import asyncpg
 
-correct_mode = {"default", "study", "translate"}
+correct_mode = {"default", "study", "translate", "summary"}
 class DialogRepository:
     def __init__(self, pool: asyncpg.Pool) -> None:
         self._pool = pool
@@ -136,7 +136,7 @@ class DialogRepository:
             mode: str,
             temperature: float,
     ) -> None:
-        if mode not in {"default", "study", "translate"}:
+        if mode not in correct_mode:
             raise ValueError("Неизвестный режим")
 
         if temperature not in {0.0, 0.3, 0.7, 1.0}:

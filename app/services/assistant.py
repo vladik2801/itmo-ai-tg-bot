@@ -10,6 +10,7 @@ from app.prompts import (
     DEFAULT_SYSTEM_PROMPT,
     STUDY_SYSTEM_PROMPT,
     TRANSLATE_SYSTEM_PROMPT,
+    SUMMARY_SYSTEM_PROMPT,
 )
 from dataclasses import dataclass
 
@@ -20,6 +21,7 @@ SYSTEM_PROMPTS = {
     "default": DEFAULT_SYSTEM_PROMPT,
     "study": STUDY_SYSTEM_PROMPT,
     "translate": TRANSLATE_SYSTEM_PROMPT,
+    "summary" : SUMMARY_SYSTEM_PROMPT
 }
 
 @dataclass(frozen=True)
@@ -72,7 +74,7 @@ class AssistantService:
                 )
 
             history = []
-            if remaining_chars > 0:
+            if remaining_chars > 0 and user_settings.mode != "summary":
                 history = await self._repository.get_history(
                     chat_id=chat_id,
                     limit=self._settings.history_max_messages,

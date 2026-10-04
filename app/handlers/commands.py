@@ -23,6 +23,7 @@ async def start(message : Message) -> None:
         "/study — помощь с программированием\n"
         "/translate — перевод текстов\n"
         "/settings — настройки температуры\n"
+        "/summary - конспект текста\n"
         "/reset — очистить историю диалога\n\n"
         "Выбери режим и отправь сообщение.",
         parse_mode= None,
@@ -72,7 +73,29 @@ async def translate(
         parse_mode=None,
     )
 
+@router.message(Command("summary"))
+async def summary(
+    message: Message,
+    assistant: AssistantService,
+) -> None:
+    if message.from_user is None:
+        return
 
+    try:
+        await assistant.set_mode(
+            user_id=message.from_user.id,
+            chat_id=message.chat.id,
+            mode="summary",
+        )
+    except AssistantError as exc:
+        await message.answer(str(exc), parse_mode=None)
+        return
+
+    await message.answer(
+        "Включён режим конспекта. Пришли текст — "
+        "я выделю основную мысль и ключевые тезисы.",
+        parse_mode=None,
+    )
 @router.message(Command("reset"))
 async def reset(
     message: Message,

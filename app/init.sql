@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS user_settings (
     user_id BIGINT PRIMARY KEY,
     mode TEXT NOT NULL DEFAULT 'default'
-        CHECK (mode IN ('default', 'study', 'translate')),
+        CHECK (mode IN ('default', 'study', 'translate', 'summary')),
     temperature NUMERIC NOT NULL DEFAULT 0.3
         CHECK (temperature IN (0.0, 0.3, 0.7, 1.0))
 );
@@ -28,4 +28,4 @@ ALTER TABLE user_settings
 
 ALTER TABLE user_settings
     ADD CONSTRAINT user_settings_mode_check
-    CHECK (mode IN ('default', 'study', 'translate'));
+    CHECK (mode IN ('default', 'study', 'translate', 'summary'));
