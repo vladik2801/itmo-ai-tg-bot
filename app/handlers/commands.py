@@ -19,7 +19,12 @@ router.message.filter(F.chat.type == "private")
 @router.message(Command("start"))
 async def start(message : Message) -> None:
     await message.answer(
-        "Привет! Чтобы отправить вопрос по программированию /study",
+        "Привет! Я AI-ассистент.\n\n"
+        "/study — помощь с программированием\n"
+        "/translate — перевод текстов\n"
+        "/settings — настройки температуры\n"
+        "/reset — очистить историю диалога\n\n"
+        "Выбери режим и отправь сообщение.",
         parse_mode= None,
     )
 
@@ -41,6 +46,32 @@ async def study(
         "Включен режим программирования! Введи свой запрос.",
         parse_mode=None,
     )
+@router.message(Command("translate"))
+async def translate(
+    message: Message,
+    assistant: AssistantService,
+) -> None:
+    if message.from_user is None:
+        return
+
+    try:
+        await assistant.set_mode(
+            user_id=message.from_user.id,
+            chat_id=message.chat.id,
+            mode="translate",
+        )
+    except AssistantError as exc:
+        await message.answer(str(exc), parse_mode=None)
+        return
+
+    await message.answer(
+        "Включён режим перевода.\n\n"
+        "По умолчанию rus -> eng\n"
+        "Для другого языка укажи его в запросе\n\n"
+        "Отправь текст для перевода.",
+        parse_mode=None,
+    )
+
 
 @router.message(Command("reset"))
 async def reset(

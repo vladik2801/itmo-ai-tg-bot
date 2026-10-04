@@ -6,7 +6,7 @@ from aiogram.utils.chat_action import ChatActionSender
 
 from app.llm import LLMError
 from app.services.assistant import AssistantError, AssistantService
-from app.telegram_text import split_text
+from app.telegram_text import split_formatted_text
 
 router = Router(name="messages")
 router.message.filter(F.chat.type == "private")
@@ -47,8 +47,8 @@ async def answer(
         )
         return
 
-    for part in split_text(response):
+    for part in split_formatted_text(response):
         await message.answer(
             part,
-            parse_mode=None,
+            parse_mode="HTML",
         )
