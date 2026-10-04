@@ -1,5 +1,5 @@
 """Обработчик обычных текстовых сообщений."""
-
+import logging
 from aiogram import F, Router
 from aiogram.types import Message
 from aiogram.utils.chat_action import ChatActionSender
@@ -8,6 +8,7 @@ from app.llm import LLMError
 from app.services.assistant import AssistantError, AssistantService
 from app.telegram_text import split_formatted_text
 
+logger = logging.getLogger(__name__)
 router = Router(name="messages")
 router.message.filter(F.chat.type == "private")
 
@@ -43,6 +44,13 @@ async def answer(
     except (LLMError, AssistantError) as exc:
         await message.answer(
             str(exc),
+            parse_mode=None,
+        )
+        return
+    except Exception:
+        logger.exception("Необработанная ошибка при обработке сообщения")
+        await message.answer(
+            "Не удалось обработать сообщение",
             parse_mode=None,
         )
         return

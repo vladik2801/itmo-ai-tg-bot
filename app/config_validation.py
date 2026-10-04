@@ -2,7 +2,7 @@ import math
 from urllib.parse import urlsplit
 
 from aiogram.utils.token import TokenValidationError, validate_token
-from pyexpat.errors import messages
+from app.constants import TEMPERATURE_OPTIONS
 
 
 class ConfigError(ValueError):
@@ -31,7 +31,7 @@ def positive_float(key: str, value: str) -> float:
     message = f"{key}: требуется положительное целое число."
     try:
         result = float(value)
-    except:
+    except ValueError:
         raise ConfigError(message) from None
     if not math.isfinite(result) or result <= 0:
         raise ConfigError(message)
@@ -40,12 +40,11 @@ def positive_float(key: str, value: str) -> float:
 
 def temperature(key: str, value: str) -> float:
     message = f"{key}: допустимы только 0.0, 0.3, 0.7 или 1.0."
-    range_temperature_value = {0.0, 0.3, 0.7, 1.0}
     try:
         result = float(value)
-    except:
+    except ValueError:
         raise ConfigError(message) from None
-    if result not in range_temperature_value:
+    if result not in TEMPERATURE_OPTIONS:
         raise ConfigError(message)
     return result
 
@@ -67,9 +66,7 @@ def bot_token(value: str) -> str:
     try:
         validate_token(value)
     except TokenValidationError:
-        raise ConfigError(
-           message
-        ) from None
+        raise ConfigError(message) from None
     return value
 
 def log_level(value: str) -> str:

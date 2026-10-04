@@ -1,7 +1,6 @@
 import logging
 from time import monotonic
 from uuid import uuid4
-import asyncio
 import aiohttp
 
 from app.config import Settings
@@ -17,7 +16,6 @@ class LLMClient:
     def __init__(self, settings: Settings) -> None:
         self._url = settings.llm_base_url.rstrip("/") + "/chat/completions"
         self._model = settings.llm_model
-        self._temperature = settings.default_temperature
         self._session = aiohttp.ClientSession(
             headers={"Authorization": f"Bearer {settings.llm_api_key}"},
             timeout=aiohttp.ClientTimeout(total=settings.llm_timeout_seconds),
@@ -99,7 +97,7 @@ class LLMClient:
                 status = "ok"
                 return content.strip()
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             status = "timeout"
             raise LLMError(
                 "Модель не успела ответить. Попробуйте ещё раз."

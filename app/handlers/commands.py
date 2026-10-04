@@ -1,16 +1,11 @@
 from aiogram import F, Router
-from aiogram.filters import Command, CommandStart
-from aiogram.types import (
-    CallbackQuery,
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-    Message,
-)
-from app.services.assistant import (
-    AssistantError,
-    AssistantService,
-    TEMPERATURE_OPTIONS,
-)
+from aiogram.filters import Command, CommandObject
+from aiogram.types import CallbackQuery, Message
+
+from app.config_validation import temperature
+from app.keyboards import TemperatureKeyboard
+from app.modes import COMMAND_MODES, MODES
+from app.services.assistant import AssistantError, AssistantService
 
 
 router = Router(name="commands")
@@ -29,71 +24,28 @@ async def start(message : Message) -> None:
         parse_mode= None,
     )
 
-@router.message(Command("study"))
-async def study(
+@router.message(Command(*COMMAND_MODES))
+async def switch_mode(
     message: Message,
+    command: CommandObject,
     assistant: AssistantService,
 ) -> None:
     if message.from_user is None:
         return
 
-    await assistant.set_mode(
-        user_id=message.from_user.id,
-        chat_id=message.chat.id,
-        mode="study",
-    )
-
-    await message.answer(
-        "Включен режим программирования! Введи свой запрос.",
-        parse_mode=None,
-    )
-@router.message(Command("translate"))
-async def translate(
-    message: Message,
-    assistant: AssistantService,
-) -> None:
-    if message.from_user is None:
-        return
-
+    mode = COMMAND_MODES[command.command]
     try:
         await assistant.set_mode(
             user_id=message.from_user.id,
             chat_id=message.chat.id,
-            mode="translate",
+            mode= mode.key,
         )
     except AssistantError as exc:
         await message.answer(str(exc), parse_mode=None)
         return
 
     await message.answer(
-        "Включён режим перевода.\n\n"
-        "По умолчанию rus -> eng\n"
-        "Для другого языка укажи его в запросе\n\n"
-        "Отправь текст для перевода.",
-        parse_mode=None,
-    )
-
-@router.message(Command("summary"))
-async def summary(
-    message: Message,
-    assistant: AssistantService,
-) -> None:
-    if message.from_user is None:
-        return
-
-    try:
-        await assistant.set_mode(
-            user_id=message.from_user.id,
-            chat_id=message.chat.id,
-            mode="summary",
-        )
-    except AssistantError as exc:
-        await message.answer(str(exc), parse_mode=None)
-        return
-
-    await message.answer(
-        "Включён режим конспекта. Пришли текст — "
-        "я выделю основную мысль и ключевые тезисы.",
+        mode.switched_message,
         parse_mode=None,
     )
 @router.message(Command("reset"))
@@ -121,28 +73,20 @@ async def settings_command(
     except AssistantError as exc:
         await message.answer(str(exc), parse_mode=None)
         return
-
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=f"{temperature:.1f}",
-                    callback_data=f"temperature:{temperature:.1f}",
-                )
-                for temperature in TEMPERATURE_OPTIONS
-            ]
-        ]
-    )
+    mode = MODES[settings.mode]
+    mode_name = f"/{mode.command}" if mode.command else mode.key
 
     await message.answer(
-        f"Текущая температура: {settings.temperature:.1f}\n"
-        "Выберите новое значение:",
-        reply_markup=keyboard,
+        f"Режим: {mode_name}\n"
+        f"Модель: {settings.model}\n"
+        f"Температура: {settings.temperature:.1f}\n\n"
+        "Выберите новое значение температуры:",
+        reply_markup=TemperatureKeyboard.build(current=settings.temperature),
         parse_mode=None,
     )
 
 
-@router.callback_query(F.data.startswith("temperature:"))
+@router.callback_query(F.data.startswith(TemperatureKeyboard.PREF))
 async def temperature_callback(
     callback: CallbackQuery,
     assistant: AssistantService,
@@ -157,12 +101,7 @@ async def temperature_callback(
         await callback.answer("Настройки доступны в личном чате.")
         return
 
-    choices = {
-        f"temperature:{temperature:.1f}": temperature
-        for temperature in TEMPERATURE_OPTIONS
-    }
-    temperature = choices.get(callback.data)
-
+    temperature = TemperatureKeyboard.parse(callback.data)
     if temperature is None:
         await callback.answer("Недопустимое значение.", show_alert=True)
         return

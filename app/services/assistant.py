@@ -2,32 +2,19 @@
 
 import asyncio
 from collections import defaultdict
-
-from app.config import Settings
-from app.dialog_repository import DialogRepository
-from app.llm import LLMClient
-from app.prompts import (
-    DEFAULT_SYSTEM_PROMPT,
-    STUDY_SYSTEM_PROMPT,
-    TRANSLATE_SYSTEM_PROMPT,
-    SUMMARY_SYSTEM_PROMPT,
-)
 from dataclasses import dataclass
 
+from app.config import Settings
+from app.constants import TEMPERATURE_OPTIONS
+from app.modes import MODES
+from app.services.ports import DialogStore, LLMGateway
 
-TEMPERATURE_OPTIONS = (0.0, 0.3, 0.7, 1.0)
-
-SYSTEM_PROMPTS = {
-    "default": DEFAULT_SYSTEM_PROMPT,
-    "study": STUDY_SYSTEM_PROMPT,
-    "translate": TRANSLATE_SYSTEM_PROMPT,
-    "summary" : SUMMARY_SYSTEM_PROMPT
-}
 
 @dataclass(frozen=True)
 class UserSettings:
     mode: str
     temperature: float
+    model: str
 
 class AssistantError(Exception):
     """Безопасная ошибка обработки запроса."""
@@ -36,8 +23,8 @@ class AssistantError(Exception):
 class AssistantService:
     def __init__(
         self,
-        llm: LLMClient,
-        repository: DialogRepository,
+        llm: LLMGateway,
+        repository: DialogStore,
         settings: Settings,
     ) -> None:
         self._llm = llm
@@ -58,23 +45,17 @@ class AssistantService:
         async with self._locks[chat_id]:
             user_settings = await self.get_settings(user_id)
 
-            system_prompt = SYSTEM_PROMPTS.get(user_settings.mode)
-            if system_prompt is None:
+            mode = MODES.get(user_settings.mode)
+            if mode is None:
                 raise AssistantError("Неизвестный режим ассистента")
 
-            remaining_chars = (
-                self._settings.context_max_chars
-                - len(system_prompt)
-                - len(text)
-            )
+            remaining_chars = (self._settings.context_max_chars - len(mode.prompt) - len(text))
 
             if remaining_chars < 0:
-                raise AssistantError(
-                    "Запрос слишком длинный. Сократите сообщение."
-                )
+                raise AssistantError("Запрос слишком длинный. Сократите сообщение.")
 
-            history = []
-            if remaining_chars > 0 and user_settings.mode != "summary":
+            history: list[dict[str, str]] = []
+            if remaining_chars > 0 and mode.uses_history:
                 history = await self._repository.get_history(
                     chat_id=chat_id,
                     limit=self._settings.history_max_messages,
@@ -82,7 +63,7 @@ class AssistantService:
                 )
 
             messages = [
-                {"role": "system", "content": system_prompt},
+                {"role": "system", "content": mode.prompt},
                 *history,
                 {"role": "user", "content": text},
             ]
@@ -113,6 +94,7 @@ class AssistantService:
         return UserSettings(
             mode=row["mode"],
             temperature=float(row["temperature"]),
+            model=self._settings.llm_model,
         )
 
     async def set_temperature(
@@ -136,7 +118,7 @@ class AssistantService:
         chat_id: int,
         mode: str,
     ) -> None:
-        if mode not in SYSTEM_PROMPTS:
+        if mode not in MODES:
             raise AssistantError("Неизвестный режим ассистента")
 
         async with self._locks[chat_id]:

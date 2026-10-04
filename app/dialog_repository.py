@@ -1,8 +1,11 @@
 from decimal import Decimal
 
 import asyncpg
+from app.constants import DEFAULT_MODE, TEMPERATURE_OPTIONS
+from app.history import trim_history
+from app.modes import MODES
 
-correct_mode = {"default", "study", "translate", "summary"}
+
 class DialogRepository:
     def __init__(self, pool: asyncpg.Pool) -> None:
         self._pool = pool
@@ -11,13 +14,13 @@ class DialogRepository:
         self,
         user_id: int,
         *,
-        mode: str = "study",
+        mode: str = DEFAULT_MODE,
         temperature: float = 0.3,
     ) -> None:
-        if mode not in correct_mode:
+        if mode not in MODES:
             raise ValueError("Неизвестный режим")
 
-        if temperature not in {0.0, 0.3, 0.7, 1.0}:
+        if temperature not in TEMPERATURE_OPTIONS:
             raise ValueError("Допустимые температуры: 0.0, 0.3, 0.7, 1.0")
 
         await self._pool.execute(
@@ -36,7 +39,7 @@ class DialogRepository:
             user_id: int,
             temperature: float,
     ) -> None:
-        if temperature not in {0.0, 0.3, 0.7, 1.0}:
+        if temperature not in TEMPERATURE_OPTIONS:
             raise ValueError("Недопустимая температура")
 
         await self._pool.execute(
@@ -69,29 +72,7 @@ class DialogRepository:
             chat_id,
             limit,
         )
-
-        history: list[dict[str, str]] = []
-        total_chars = 0
-
-        for row in rows:
-            content = row["content"]
-
-            if total_chars + len(content) > max_chars:
-                break
-
-            history.append({
-                "role": row["role"],
-                "content": content,
-            })
-            total_chars += len(content)
-
-        history.reverse()
-
-        # Контекст начинаем с вопроса пользователя.
-        if history and history[0]["role"] == "assistant":
-            history.pop(0)
-
-        return history
+        return trim_history(rows, max_chars)
 
     async def save_exchange(
         self,
@@ -136,18 +117,18 @@ class DialogRepository:
             mode: str,
             temperature: float,
     ) -> None:
-        if mode not in correct_mode:
+        if mode not in MODES:
             raise ValueError("Неизвестный режим")
 
-        if temperature not in {0.0, 0.3, 0.7, 1.0}:
+        if temperature not in TEMPERATURE_OPTIONS:
             raise ValueError("Недопустимая температура")
 
         async with self._pool.acquire() as connection:
             async with connection.transaction():
                 await connection.execute(
                     """
-                    INSERT INTO user_settings (user_id, mode, temperature)
-                    VALUES ($1, 'default', $2)
+                    INSERT INTO user_settings (user_id, temperature)
+                    VALUES ($1, $2)
                     ON CONFLICT (user_id) DO NOTHING
                     """,
                     user_id,
