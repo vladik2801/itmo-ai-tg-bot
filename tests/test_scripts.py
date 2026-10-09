@@ -6,17 +6,35 @@ from dotenv import dotenv_values
 
 from scripts.common import CommandError, run_command
 from scripts.local import compose_command, prepare_env
-
+from tests.helpers import LLM_ENV, make_settings
 
 def test_first_setup_and_repeat_preserve_secrets(tmp_path):
     # Arrange
     root = tmp_path / "Курс с пробелами"
     root.mkdir()
-    prompt = Mock(side_effect=["123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijk", ""])
+    prompt = Mock(
+        side_effect=[
+            "123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijk",
+            "",
+        ]
+    )
+
     # Act
-    path = prepare_env(root, cloud=False, ask=prompt, environ={})
+    path = prepare_env(
+        root,
+        cloud=False,
+        ask=prompt,
+        environ=LLM_ENV.copy(),
+    )
     first = path.read_bytes()
-    prepare_env(root, cloud=False, ask=Mock(side_effect=AssertionError), environ={})
+
+    prepare_env(
+        root,
+        cloud=False,
+        ask=Mock(side_effect=AssertionError),
+        environ=LLM_ENV.copy(),
+    )
+
     # Assert
     assert path.read_bytes() == first
     assert len(dotenv_values(path)["POSTGRES_PASSWORD"]) >= 24
@@ -26,18 +44,34 @@ def test_first_setup_and_repeat_preserve_secrets(tmp_path):
 def test_cloud_requires_proxy_and_has_separate_password(tmp_path):
     # Arrange
     token = "123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijk"
-    prepare_env(tmp_path, cloud=False, ask=Mock(side_effect=[token, ""]), environ={})
+
+    prepare_env(
+        tmp_path,
+        cloud=False,
+        ask=Mock(side_effect=[token, ""]),
+        environ=LLM_ENV.copy(),
+    )
+
     # Act
     path = prepare_env(
         tmp_path,
         cloud=True,
-        ask=Mock(side_effect=[token, "socks5://user:p%40ss@proxy:1080"]),
-        environ={},
+        ask=Mock(
+            side_effect=[
+                token,
+                "socks5://user:p%40ss@proxy:1080",
+            ]
+        ),
+        environ=LLM_ENV.copy(),
     )
+
     # Assert
     config = dotenv_values(path)
     assert config["POSTGRES_HOST"] == "db"
-    assert config["POSTGRES_PASSWORD"] != dotenv_values(tmp_path / ".env")["POSTGRES_PASSWORD"]
+    assert (
+        config["POSTGRES_PASSWORD"]
+        != dotenv_values(tmp_path / ".env")["POSTGRES_PASSWORD"]
+    )
     assert config["TELEGRAM_PROXY_URL"] == "socks5://user:p%40ss@proxy:1080"
 
 
@@ -316,8 +350,6 @@ def test_deploy_uploads_secrets_only_over_ssh_stdin(tmp_path, monkeypatch):
     # Arrange
     import base64
 
-    from app.config import Settings
-
     deployment = cloud(tmp_path, FakeYC())
     (tmp_path / "app").mkdir()
     (tmp_path / "app" / "__init__.py").write_text("", encoding="utf-8")
@@ -329,7 +361,7 @@ def test_deploy_uploads_secrets_only_over_ssh_stdin(tmp_path, monkeypatch):
 
     monkeypatch.setattr(deployment, "ssh", ssh)
     monkeypatch.setattr(deployment, "wait_ssh", Mock())
-    settings = Settings(
+    settings = make_settings(
         bot_token="secret-token",
         postgres_password="p$a#s's",
         telegram_proxy_url="http://user:password@proxy:3128",
@@ -373,26 +405,42 @@ def test_cloud_help_renders(capsys):
     assert "Гарантия vCPU, %" in capsys.readouterr().out
 
 
-def test_setup_only_checks_real_credentials_without_starting_bot(tmp_path, monkeypatch):
+def test_setup_only_checks_real_credentials_without_starting_bot(
+    tmp_path,
+    monkeypatch,
+):
     # Arrange
     from unittest.mock import AsyncMock
 
     from scripts import local
 
+    # local_main() повторно читает настройки из окружения процесса.
+    for key, value in LLM_ENV.items():
+        monkeypatch.setenv(key, value)
+
     prepare_env(
         tmp_path,
         cloud=False,
-        ask=Mock(side_effect=["123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijk", ""]),
-        environ={},
+        ask=Mock(
+            side_effect=[
+                "123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijk",
+                "",
+            ]
+        ),
+        environ=LLM_ENV.copy(),
     )
+
     commands = Mock(return_value="")
     database = AsyncMock()
     launch = Mock()
+
     monkeypatch.setattr(local, "run_command", commands)
     monkeypatch.setattr(local, "check_database", database)
     monkeypatch.setattr(local.subprocess, "call", launch)
+
     # Act
     result = local.local_main(tmp_path, "up", setup_only=True)
+
     # Assert
     assert result == 0
     assert "--wait" in commands.call_args.args[0]

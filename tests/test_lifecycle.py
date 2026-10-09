@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from aiohttp import ClientSession
 
-from app.config import Settings
+from tests.helpers import make_settings
 from app.health import HealthState, start_health_server
 
 
@@ -43,8 +43,12 @@ async def test_telegram_failure_closes_pool_and_session(monkeypatch):
         session=Mock(close=AsyncMock()),
     )
     monkeypatch.setattr(application, "create_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(application, "initialize_bd", AsyncMock())
     monkeypatch.setattr(application, "create_bot", Mock(return_value=bot))
-    settings = Settings(bot_token="unused", postgres_password="unused")
+    settings = make_settings(
+        bot_token="unused",
+        postgres_password="unused",
+    )
     # Act
     with pytest.raises(ConnectionError):
         await application.run(settings)
@@ -62,7 +66,12 @@ async def test_db_failure_closes_http_session(monkeypatch):
     monkeypatch.setattr(application, "create_bot", Mock(return_value=bot))
     # Act
     with pytest.raises(ConnectionError):
-        await application.run(Settings(bot_token="unused", postgres_password="unused"))
+        await application.run(
+            make_settings(
+                bot_token="unused",
+                postgres_password="unused",
+            )
+        )
     # Assert
     bot.session.close.assert_awaited_once()
 
@@ -87,7 +96,7 @@ async def test_http_proxy_receives_connect_and_failure_has_no_direct_fallback(un
 
     server = await asyncio.start_server(proxy, "127.0.0.1", unused_tcp_port)
     bot = create_bot(
-        Settings(
+        make_settings(
             bot_token="123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijk",
             postgres_password="unused",
             telegram_proxy_url=f"http://student:password@127.0.0.1:{unused_tcp_port}",

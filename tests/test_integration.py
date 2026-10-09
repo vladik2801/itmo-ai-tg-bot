@@ -14,7 +14,7 @@ from dataclasses import replace
 import asyncpg
 import pytest
 
-from app.config import Settings
+from tests.helpers import make_settings
 from app.db import create_pool
 from app.health import HealthState, health_result
 from scripts.common import CommandError, run_command
@@ -76,7 +76,7 @@ def database():
         assert int(info["NetworkSettings"]["Ports"]["5432/tcp"][0]["HostPort"]) == port
         wait_until_ready()
         yield (
-            Settings(
+            make_settings(
                 bot_token="123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijk",
                 postgres_password=password,
                 postgres_port=port,
