@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from aiohttp import ClientSession
 
-from tests.helpers import make_settings
 from app.health import HealthState, start_health_server
+from tests.helpers import make_settings
 
 
 async def test_http_health_returns_503_then_200(unused_tcp_port):

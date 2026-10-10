@@ -41,8 +41,6 @@ def test_text_without_any_separator_is_split_without_loss():
     assert "".join(parts) == text
 
 
-
-
 def test_long_code_block_is_split_into_valid_code_parts():
     # Arrange
     code = "".join(f"x{i} = a < b && c > {i}\n" for i in range(1_500))

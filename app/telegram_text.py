@@ -1,8 +1,9 @@
 """Разбиение текста на сообщения Telegram."""
+
 import re
 from html import escape
-TELEGRAM_MESSAGE_LIMIT = 4096
 
+TELEGRAM_MESSAGE_LIMIT = 4096
 
 
 def split_formatted_text(text: str) -> list[str]:

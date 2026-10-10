@@ -39,7 +39,6 @@ def test_history_never_starts_with_orphan_assistant_reply():
     assert result == []
 
 
-
 def test_empty_history_gives_empty_result():
     assert trim_history([], max_chars=10) == []
 

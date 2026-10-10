@@ -14,10 +14,10 @@ from dataclasses import replace
 import asyncpg
 import pytest
 
-from tests.helpers import make_settings
 from app.db import create_pool
 from app.health import HealthState, health_result
 from scripts.common import CommandError, run_command
+from tests.helpers import make_settings
 
 pytestmark = [
     pytest.mark.integration,

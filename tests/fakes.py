@@ -20,7 +20,6 @@ class LLMCall:
 
 
 class FakeLLM:
-
     def __init__(self, *replies: str | Exception) -> None:
         self._replies = list(replies) or ["ответ модели"]
         self.calls: list[LLMCall] = []
@@ -34,7 +33,6 @@ class FakeLLM:
 
 
 class FakeRepository:
-
     def __init__(self) -> None:
         self.settings: dict[int, dict] = {}
         self.messages: list[tuple[int, str, str]] = []
@@ -82,7 +80,6 @@ class FakeRepository:
 
 
 class FakeSession:
-
     def __init__(self) -> None:
         self.methods: list[TelegramMethod] = []
 

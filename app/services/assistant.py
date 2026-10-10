@@ -16,6 +16,7 @@ class UserSettings:
     temperature: float
     model: str
 
+
 class AssistantError(Exception):
     """Безопасная ошибка обработки запроса."""
 
@@ -49,7 +50,7 @@ class AssistantService:
             if mode is None:
                 raise AssistantError("Неизвестный режим ассистента")
 
-            remaining_chars = (self._settings.context_max_chars - len(mode.prompt) - len(text))
+            remaining_chars = self._settings.context_max_chars - len(mode.prompt) - len(text)
 
             if remaining_chars < 0:
                 raise AssistantError("Запрос слишком длинный. Сократите сообщение.")
@@ -98,10 +99,10 @@ class AssistantService:
         )
 
     async def set_temperature(
-            self,
-            user_id: int,
-            chat_id: int,
-            temperature: float,
+        self,
+        user_id: int,
+        chat_id: int,
+        temperature: float,
     ) -> None:
         if temperature not in TEMPERATURE_OPTIONS:
             raise AssistantError("Недопустимая температура")

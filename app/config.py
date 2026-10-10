@@ -50,31 +50,17 @@ class Settings:
 
         return cls(
             bot_token=validation.bot_token(value("BOT_TOKEN")),
-            postgres_password=validation.required(
-                "POSTGRES_PASSWORD", value("POSTGRES_PASSWORD")
-            ),
-            telegram_proxy_url=validation.telegram_proxy_url(
-                value("TELEGRAM_PROXY_URL")
-            ),
+            postgres_password=validation.required("POSTGRES_PASSWORD", value("POSTGRES_PASSWORD")),
+            telegram_proxy_url=validation.telegram_proxy_url(value("TELEGRAM_PROXY_URL")),
             postgres_host=value("POSTGRES_HOST", "127.0.0.1"),
-            postgres_port=validation.port(
-                "POSTGRES_PORT", value("POSTGRES_PORT", "5432")
-            ),
+            postgres_port=validation.port("POSTGRES_PORT", value("POSTGRES_PORT", "5432")),
             postgres_db=value("POSTGRES_DB", "bot"),
             postgres_user=value("POSTGRES_USER", "bot"),
             log_level=validation.log_level(value("LOG_LEVEL", "INFO")),
-            health_port=validation.port(
-                "HEALTH_PORT", value("HEALTH_PORT", "8080")
-            ),
-            llm_api_key=validation.required(
-                "LLM_API_KEY", value("LLM_API_KEY")
-            ),
-            llm_base_url=validation.required(
-                "LLM_BASE_URL", value("LLM_BASE_URL")
-            ),
-            llm_model=validation.required(
-                "LLM_MODEL", value("LLM_MODEL")
-            ),
+            health_port=validation.port("HEALTH_PORT", value("HEALTH_PORT", "8080")),
+            llm_api_key=validation.required("LLM_API_KEY", value("LLM_API_KEY")),
+            llm_base_url=validation.required("LLM_BASE_URL", value("LLM_BASE_URL")),
+            llm_model=validation.required("LLM_MODEL", value("LLM_MODEL")),
             llm_timeout_seconds=validation.positive_float(
                 "LLM_TIMEOUT_SECONDS", value("LLM_TIMEOUT_SECONDS", "30")
             ),

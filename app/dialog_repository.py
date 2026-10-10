@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 import asyncpg
+
 from app.constants import DEFAULT_MODE, TEMPERATURE_OPTIONS
 from app.history import trim_history
 from app.modes import MODES
@@ -35,9 +36,9 @@ class DialogRepository:
         )
 
     async def set_temperature(
-            self,
-            user_id: int,
-            temperature: float,
+        self,
+        user_id: int,
+        temperature: float,
     ) -> None:
         if temperature not in TEMPERATURE_OPTIONS:
             raise ValueError("Недопустимая температура")
@@ -52,11 +53,12 @@ class DialogRepository:
             user_id,
             Decimal(str(temperature)),
         )
+
     async def get_history(
-            self,
-            chat_id: int,
-            limit: int = 20,
-            max_chars: int = 12000,
+        self,
+        chat_id: int,
+        limit: int = 20,
+        max_chars: int = 12000,
     ) -> list[dict[str, str]]:
         if limit <= 0 or max_chars <= 0:
             raise ValueError("Лимиты истории должны быть положительными")
@@ -111,11 +113,11 @@ class DialogRepository:
         )
 
     async def set_mode(
-            self,
-            user_id: int,
-            chat_id: int,
-            mode: str,
-            temperature: float,
+        self,
+        user_id: int,
+        chat_id: int,
+        mode: str,
+        temperature: float,
     ) -> None:
         if mode not in MODES:
             raise ValueError("Неизвестный режим")

@@ -47,7 +47,7 @@ async def run(settings: Settings) -> None:
             dispatcher.start_polling(
                 bot,
                 db=state.pool,
-                assistant = assistant,
+                assistant=assistant,
                 allowed_updates=dispatcher.resolve_used_update_types(),
                 close_bot_session=False,
                 handle_as_tasks=False,

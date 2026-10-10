@@ -9,11 +9,12 @@ from app.prompts import (
     TRANSLATE_SYSTEM_PROMPT,
 )
 
+
 @dataclass(frozen=True)
 class AssistantMode:
     key: str
-    command : str | None
-    prompt : str
+    command: str | None
+    prompt: str
     description: str
     switched_message: str
     uses_history: bool = True
@@ -23,16 +24,16 @@ MODES: dict[str, AssistantMode] = {
     mode.key: mode
     for mode in (
         AssistantMode(
-            key = "default",
-            command= None,
-            prompt= DEFAULT_SYSTEM_PROMPT,
+            key="default",
+            command=None,
+            prompt=DEFAULT_SYSTEM_PROMPT,
             description="",
             switched_message="",
         ),
         AssistantMode(
-            key = "study",
+            key="study",
             command="study",
-            prompt= STUDY_SYSTEM_PROMPT,
+            prompt=STUDY_SYSTEM_PROMPT,
             description="помощь с программированием",
             switched_message="Включен режим программирования! Введи свой запрос.",
         ),
@@ -51,12 +52,13 @@ MODES: dict[str, AssistantMode] = {
         AssistantMode(
             key="summary",
             command="summary",
-            prompt= SUMMARY_SYSTEM_PROMPT,
+            prompt=SUMMARY_SYSTEM_PROMPT,
             description="конспект текста",
-            switched_message= "Включён режим конспекта. Пришли текст — я выделю основную мысль и ключевые тезисы.",
-            uses_history= False,
-            ),
-        )
+            switched_message="Включён режим конспекта. Пришли текст —"
+            "я выделю основную мысль и ключевые тезисы.",
+            uses_history=False,
+        ),
+    )
 }
 COMMAND_MODES: dict[str, AssistantMode] = {
     mode.command: mode for mode in MODES.values() if mode.command is not None

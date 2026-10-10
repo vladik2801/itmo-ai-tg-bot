@@ -2,7 +2,6 @@
 
 import pytest
 from aiogram.dispatcher.event.bases import UNHANDLED
-from aiogram.methods import EditMessageText
 
 from app.handlers import commands, messages
 from app.llm import LLMError
@@ -11,7 +10,6 @@ from tests.fakes import (
     FakeLLM,
     FakeRepository,
     make_bot,
-    make_callback,
     make_message,
 )
 from tests.helpers import make_settings
@@ -34,7 +32,6 @@ def texts(bot):
 
 async def route(router, message, bot, assistant):
     return await router.propagate_event("message", message, bot=bot, assistant=assistant)
-
 
 
 @pytest.mark.parametrize("router", [commands.router, messages.router])
@@ -101,4 +98,3 @@ async def test_llm_error_becomes_exact_safe_message(bot, error_text):
     # Assert
     assert texts(bot) == [error_text]
     assert store.history_of(42) == []
-

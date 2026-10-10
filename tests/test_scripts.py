@@ -8,6 +8,7 @@ from scripts.common import CommandError, run_command
 from scripts.local import compose_command, prepare_env
 from tests.helpers import LLM_ENV, make_settings
 
+
 def test_first_setup_and_repeat_preserve_secrets(tmp_path):
     # Arrange
     root = tmp_path / "Курс с пробелами"
@@ -68,10 +69,7 @@ def test_cloud_requires_proxy_and_has_separate_password(tmp_path):
     # Assert
     config = dotenv_values(path)
     assert config["POSTGRES_HOST"] == "db"
-    assert (
-        config["POSTGRES_PASSWORD"]
-        != dotenv_values(tmp_path / ".env")["POSTGRES_PASSWORD"]
-    )
+    assert config["POSTGRES_PASSWORD"] != dotenv_values(tmp_path / ".env")["POSTGRES_PASSWORD"]
     assert config["TELEGRAM_PROXY_URL"] == "socks5://user:p%40ss@proxy:1080"
 
 

@@ -2,17 +2,16 @@ from aiogram import F, Router
 from aiogram.filters import Command, CommandObject
 from aiogram.types import CallbackQuery, Message
 
-from app.config_validation import temperature
 from app.keyboards import TemperatureKeyboard
 from app.modes import COMMAND_MODES, MODES
 from app.services.assistant import AssistantError, AssistantService
 
-
 router = Router(name="commands")
 router.message.filter(F.chat.type == "private")
 
+
 @router.message(Command("start"))
-async def start(message : Message) -> None:
+async def start(message: Message) -> None:
     await message.answer(
         "Привет! Я AI-ассистент.\n\n"
         "/study — помощь с программированием\n"
@@ -21,8 +20,9 @@ async def start(message : Message) -> None:
         "/summary - конспект текста\n"
         "/reset — очистить историю диалога\n\n"
         "Выбери режим и отправь сообщение.",
-        parse_mode= None,
+        parse_mode=None,
     )
+
 
 @router.message(Command(*COMMAND_MODES))
 async def switch_mode(
@@ -38,7 +38,7 @@ async def switch_mode(
         await assistant.set_mode(
             user_id=message.from_user.id,
             chat_id=message.chat.id,
-            mode= mode.key,
+            mode=mode.key,
         )
     except AssistantError as exc:
         await message.answer(str(exc), parse_mode=None)
@@ -48,6 +48,8 @@ async def switch_mode(
         mode.switched_message,
         parse_mode=None,
     )
+
+
 @router.message(Command("reset"))
 async def reset(
     message: Message,
@@ -59,6 +61,7 @@ async def reset(
         "История диалога очищена. Настройки сохранены.",
         parse_mode=None,
     )
+
 
 @router.message(Command("settings"))
 async def settings_command(

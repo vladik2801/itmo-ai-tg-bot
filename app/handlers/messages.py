@@ -1,5 +1,7 @@
 """Обработчик обычных текстовых сообщений."""
+
 import logging
+
 from aiogram import F, Router
 from aiogram.types import Message
 from aiogram.utils.chat_action import ChatActionSender

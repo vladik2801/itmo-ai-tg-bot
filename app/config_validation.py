@@ -2,6 +2,7 @@ import math
 from urllib.parse import urlsplit
 
 from aiogram.utils.token import TokenValidationError, validate_token
+
 from app.constants import TEMPERATURE_OPTIONS
 
 
@@ -9,7 +10,7 @@ class ConfigError(ValueError):
     """Ошибка настройки без секретных значений в сообщении."""
 
 
-def required(key: str, value : str) -> str:
+def required(key: str, value: str) -> str:
     result = value.strip()
     if not result:
         raise ConfigError(f"{key}: не задана обязательная настройка")
@@ -20,7 +21,7 @@ def positive_int(key: str, value: str) -> int:
     message = f"{key}: требуется положительное целое число."
     try:
         result = int(value)
-    except:
+    except ValueError:
         raise ConfigError(message) from None
     if result <= 0:
         raise ConfigError(message)
@@ -49,7 +50,7 @@ def temperature(key: str, value: str) -> float:
     return result
 
 
-def port(key: str, value : str) -> int:
+def port(key: str, value: str) -> int:
     min_port_num = 1
     max_port_num = 65535
     try:
@@ -61,13 +62,15 @@ def port(key: str, value : str) -> int:
     except ValueError:
         raise ConfigError(message) from None
 
+
 def bot_token(value: str) -> str:
-    message =  "BOT_TOKEN: укажите токен, полученный у BotFather."
+    message = "BOT_TOKEN: укажите токен, полученный у BotFather."
     try:
         validate_token(value)
     except TokenValidationError:
         raise ConfigError(message) from None
     return value
+
 
 def log_level(value: str) -> str:
     result = value.upper()
@@ -78,8 +81,12 @@ def log_level(value: str) -> str:
 
     return result
 
+
 def telegram_proxy_url(value: str) -> str:
-    message = "TELEGRAM_PROXY_URL: нужен http://host:port или socks5://host:port. При необходимости добавьте user:password@."
+    message = (
+        "TELEGRAM_PROXY_URL: нужен http://host:port или socks5://host:port."
+        "При необходимости добавьте user:password@."
+    )
     if not value:
         return value
 
@@ -95,8 +102,6 @@ def telegram_proxy_url(value: str) -> str:
         ):
             raise ValueError
     except ValueError:
-        raise ConfigError(
-            message
-        ) from None
+        raise ConfigError(message) from None
 
     return value

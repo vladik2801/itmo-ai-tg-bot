@@ -7,15 +7,15 @@ import pytest
 from aiogram import Bot, Dispatcher
 from aiogram.methods import SendMessage
 from aiogram.types import Chat, Message, PhotoSize, Update, User
-from tests.helpers import LLM_ENV
+
 from app.config import ConfigError, Settings
 from app.handlers.echo import router
 from app.health import HealthState, health_result
 from app.logging_setup import SecretFilter
 from app.telegram import create_bot
+from tests.helpers import LLM_ENV
 
 TOKEN = "123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijk"
-
 
 
 @pytest.mark.parametrize("text", ["Привет 👋", "/start", "<b>текст</b> & *слово*", "строка\nдва"])

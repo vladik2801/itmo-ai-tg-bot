@@ -1,6 +1,7 @@
-""""
+""" "
 DPI - принцип инверсии зависимости
 """
+
 from typing import Any, Protocol
 
 

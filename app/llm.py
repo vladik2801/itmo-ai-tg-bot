@@ -1,6 +1,7 @@
 import logging
 from time import monotonic
 from uuid import uuid4
+
 import aiohttp
 
 from app.config import Settings
@@ -21,7 +22,11 @@ class LLMClient:
             timeout=aiohttp.ClientTimeout(total=settings.llm_timeout_seconds),
         )
 
-    async def generate(self, messages: list[dict[str, str]],temperature: float,) -> str:
+    async def generate(
+        self,
+        messages: list[dict[str, str]],
+        temperature: float,
+    ) -> str:
         request_id = uuid4().hex
         started = monotonic()
         status = "error"
@@ -34,14 +39,10 @@ class LLMClient:
 
         try:
             async with self._session.post(
-                    self._url,
-                    json={
-                        "model": self._model,
-                        "temperature": temperature,
-                        "messages": messages
-                    },
-                    allow_redirects=False,
-                    raise_for_status=False,  # Проверяем HTTP-статус самостоятельно.
+                self._url,
+                json={"model": self._model, "temperature": temperature, "messages": messages},
+                allow_redirects=False,
+                raise_for_status=False,  # Проверяем HTTP-статус самостоятельно.
             ) as response:
                 if response.status != 200:
                     logger.warning(
@@ -51,21 +52,15 @@ class LLMClient:
                     )
 
                     if response.status == 429:
-                        raise LLMError(
-                            "Превышен лимит запросов. Попробуйте позже."
-                        )
+                        raise LLMError("Превышен лимит запросов. Попробуйте позже.")
 
-                    raise LLMError(
-                        "Не удалось получить ответ модели. Попробуйте позже."
-                    )
+                    raise LLMError("Не удалось получить ответ модели. Попробуйте позже.")
 
                 try:
                     data = await response.json()
                 except (ValueError, aiohttp.ContentTypeError):
                     logger.warning("Некорректный JSON: id=%s", request_id)
-                    raise LLMError(
-                        "Сервис модели вернул некорректные данные."
-                    ) from None
+                    raise LLMError("Сервис модели вернул некорректные данные.") from None
 
                 # Проверяем структуру ответа перед обращением к полям.
                 if not isinstance(data, dict):
@@ -99,16 +94,12 @@ class LLMClient:
 
         except TimeoutError:
             status = "timeout"
-            raise LLMError(
-                "Модель не успела ответить. Попробуйте ещё раз."
-            ) from None
+            raise LLMError("Модель не успела ответить. Попробуйте ещё раз.") from None
 
         except aiohttp.ClientError:
             status = "network_error"
             logger.warning("Ошибка соединения с LLM: id=%s", request_id)
-            raise LLMError(
-                "Ошибка связи с сервисом модели. Попробуйте позже."
-            ) from None
+            raise LLMError("Ошибка связи с сервисом модели. Попробуйте позже.") from None
 
         finally:
             logger.info(
@@ -117,5 +108,6 @@ class LLMClient:
                 status,
                 monotonic() - started,
             )
+
     async def close(self) -> None:
         await self._session.close()

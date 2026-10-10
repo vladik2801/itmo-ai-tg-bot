@@ -12,7 +12,6 @@ from tests.fakes import FakeLLM
 from tests.helpers import make_settings
 from tests.test_integration import database as database
 
-
 pytestmark = [
     pytest.mark.integration,
     pytest.mark.skipif(
